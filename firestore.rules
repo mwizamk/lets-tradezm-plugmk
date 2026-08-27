@@ -1,0 +1,69 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == "admin"
+        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.active == true;
+    }
+
+    match /admins/{uid} {
+      allow read: if isAdmin();
+      allow create, update, delete: if false;
+    }
+
+    match /pricelist/{id} {
+      allow read: if resource.data.status == "active" || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /clients/{id} {
+      allow create: if signedIn() && request.resource.data.customerUid == request.auth.uid;
+      allow read, update: if isAdmin()
+        || (signedIn() && resource.data.customerUid == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+
+    match /orders/{id} {
+      allow create: if signedIn() && request.resource.data.customerUid == request.auth.uid;
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.customerUid == request.auth.uid);
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /payments/{id} {
+      allow create: if signedIn() && request.resource.data.customerUid == request.auth.uid;
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.customerUid == request.auth.uid);
+      allow update, delete: if isAdmin();
+    }
+
+    match /subscriptions/{id} {
+      allow create, update, delete: if isAdmin();
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.customerUid == request.auth.uid);
+    }
+
+    match /accounts/{id} {
+      allow read, create, update, delete: if isAdmin();
+    }
+
+    match /users/{uid} {
+      allow read, create, update: if isAdmin()
+        || (signedIn() && request.auth.uid == uid);
+      allow delete: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
