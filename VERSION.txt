@@ -1,2 +1,0 @@
-0.1.0-design
-Release focus: visual design and navigation scaffold only.
